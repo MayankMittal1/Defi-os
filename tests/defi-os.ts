@@ -24,14 +24,14 @@ describe("Defi-OS ", async () => {
   let mint: anchor.web3.Keypair;
   let user_exchange_token_account: anchor.web3.PublicKey;
   let userTokenAccount: anchor.web3.PublicKey;
-  const [repoVault, vault_bump] = await PublicKey.findProgramAddress(
+  const [repo_vault, vault_bump] = await PublicKey.findProgramAddress(
     [
       anchor.utils.bytes.utf8.encode("repo-vault"),
       repoAccount.publicKey.toBuffer(),
     ],
     program.programId
   );
-  const [repoVaultUSDC, vaultBumpUSDC] = await PublicKey.findProgramAddress(
+  const [repo_treasury, treasury_bump] = await PublicKey.findProgramAddress(
     [
       anchor.utils.bytes.utf8.encode("repo-treasury"),
       repoAccount.publicKey.toBuffer(),
@@ -112,13 +112,13 @@ describe("Defi-OS ", async () => {
     console.log(repoAccount.publicKey.toBase58());
     mint = anchor.web3.Keypair.generate();
     await program.methods
-      .initializeRepo("ABCD", vault_bump, vaultBumpUSDC)
+      .initializeRepo("ABCD", vault_bump, treasury_bump)
       .accounts({
         exchangeTokenMint: exchange_token_mint.publicKey,
         mint: mint.publicKey,
         repoAccount: repoAccount.publicKey,
-        repoVault: repoVault,
-        repoVaultUsdc: repoVaultUSDC,
+        repoVault: repo_vault,
+        repoTreasury: repo_treasury,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
         systemProgram: anchor.web3.SystemProgram.programId,
       })
@@ -130,7 +130,11 @@ describe("Defi-OS ", async () => {
     console.log("Repository: ", account);
     console.log(
       "Repo Token balance: ",
-      await program.provider.connection.getTokenAccountBalance(repoVault)
+      await program.provider.connection.getTokenAccountBalance(repo_vault)
+    );
+    console.log(
+      "Repo Treasury balance: ",
+      await program.provider.connection.getTokenAccountBalance(repo_treasury)
     );
   });
 
@@ -157,17 +161,35 @@ describe("Defi-OS ", async () => {
     await program.provider.sendAndConfirm(create_user_token_account_tx);
     console.log(repoAccount.publicKey.toBase58());
     await program.methods
-      .buyTokens(new anchor.BN(20000), vault_bump)
+      .buyTokens(new anchor.BN(20000))
       .accounts({
-        exchangeTokenMint: exchange_token_mint.publicKey,
         repoAccount: repoAccount.publicKey,
-        repoVault: repoVault,
-        //repoVaultUsdc: repoVaultUSDC,
+        repoVault: repo_vault,
+        repoTreasury: repo_treasury,
         systemProgram: anchor.web3.SystemProgram.programId,
         tokenProgram: spl.TOKEN_PROGRAM_ID,
         userExchangeTokenAccount: user_exchange_token_account,
         userTokenAccount: userTokenAccount,
       })
       .rpc();
+
+    console.log(
+      "Bought Token balance: ",
+      await program.provider.connection.getTokenAccountBalance(userTokenAccount)
+    );
+    console.log(
+      "Repo Token balance: ",
+      await program.provider.connection.getTokenAccountBalance(repo_vault)
+    );
+    console.log(
+      "Wallet Token balance: ",
+      await program.provider.connection.getTokenAccountBalance(
+        user_exchange_token_account
+      )
+    );
+    console.log(
+      "Repo Treasury balance balance: ",
+      await program.provider.connection.getTokenAccountBalance(repo_treasury)
+    );
   });
 });
